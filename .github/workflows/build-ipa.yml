@@ -54,6 +54,12 @@ jobs:
           BIN_SIZE=$(stat -f%z "$APP_PATH/AARCClockIn")
           echo "Built executable ($BIN_SIZE bytes) at: $APP_PATH/AARCClockIn"
 
+      - name: Ad-hoc sign for sideload compatibility
+        run: |
+          APP_PATH="build/DerivedData/Build/Products/Release-iphoneos/AARCClockIn.app"
+          codesign --force --deep -s - "$APP_PATH"
+          codesign -dv "$APP_PATH" 2>&1
+
       - name: Pack unsigned IPA
         run: |
           mkdir -p Payload
