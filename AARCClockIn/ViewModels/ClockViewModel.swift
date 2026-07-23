@@ -168,7 +168,6 @@ final class ClockViewModel: ObservableObject {
                 let loc = try await location.requestSingle()
                 let lat = loc.coordinate.latitude
                 let lng = loc.coordinate.longitude
-                let acc = loc.horizontalAccuracy
 
                 let check = try await api.checkLocation(token: token, lat: lat, lng: lng)
                 location.updateStatusFromCheckLocation(check)

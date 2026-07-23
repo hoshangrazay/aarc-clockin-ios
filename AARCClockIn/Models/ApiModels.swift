@@ -93,7 +93,7 @@ enum DurationParser {
     static func toSeconds(_ formatted: String?) -> Int {
         guard let s = formatted, !s.isEmpty else { return 0 }
         let pattern = "([0-9]+)\\s*([hms])"
-        guard let regex = try? NSRegularExpression(pattern: pattern, caseInsensitive: true) else { return 0 }
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { return 0 }
         let nsr = s as NSString
         var total = 0
         for match in regex.matches(in: s, range: NSRange(location: 0, length: nsr.length)) {

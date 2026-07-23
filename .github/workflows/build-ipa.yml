@@ -24,6 +24,7 @@ jobs:
       - name: Build (unsigned)
         run: |
           set -e
+          set -o pipefail
           xcodebuild \
             -project AARCClockIn.xcodeproj \
             -scheme AARCClockIn \
@@ -45,7 +46,13 @@ jobs:
             tail -n 80 build.log
             exit 1
           fi
-          echo "Built app at: $APP_PATH"
+          if [ ! -x "$APP_PATH/AARCClockIn" ]; then
+            echo "::error::AARCClockIn executable missing - build partial"
+            tail -n 80 build.log
+            exit 1
+          fi
+          BIN_SIZE=$(stat -f%z "$APP_PATH/AARCClockIn")
+          echo "Built executable ($BIN_SIZE bytes) at: $APP_PATH/AARCClockIn"
 
       - name: Pack unsigned IPA
         run: |
