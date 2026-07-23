@@ -85,6 +85,27 @@ AARCClockInApp (@main) -> RootView -> LoginScreen | ClockScreen
 
 **IPA location on user's machine**: `C:\Users\Hoshang\Desktop\aarc-clockin-ios-ipa\AARCClockIn-unsigned-ipa\AARCClockIn-unsigned.ipa`
 
-**Repo state**: public, default branch `main`, 2 commits (initial + ci cleanup)
+**Repo state**: public, default branch `main`
 
-**Next step for user**: Sideload IPA via 3uTools on iPhone 12 Pro Max, test login + clock in/out at Ebury House.
+---
+
+### 2026-07-23 — Bugfix build + ad-hoc signing for 3uTools compatibility
+
+**Build #29970319159** (initial) had a broken IPA: the `NSRegularExpression(pattern:caseInsensitive:)` Swift API was wrong — should be `NSRegularExpression(pattern:options: [.caseInsensitive])`. Xcode compiled it but `| tee build.log` without `set -o pipefail` masked the error, producing an empty `.app` (only Assets.car + Info.plist, no executable binary).
+
+**Fix (commit e62587f)**:
+- `ApiModels.swift:96`: `caseInsensitive: true` → `options: [.caseInsensitive]`
+- `build-ipa.yml`: added `set -o pipefail` + `[ -x "$APP_PATH/AARCClockIn" ]` check
+- `ClockViewModel.swift`: removed unused `let acc = loc.horizontalAccuracy` in `toggleClock()` (only `uploadCurrentLocation()` needs accuracy, which has its own local `acc`)
+
+**Build #29971249692**: SUCCESS in 33s. Executable binary 681,064 bytes.
+
+**3uTools issue**: Error code 45 ("Signing failed") — the binary was completely unsigned (`CODE_SIGNING_ALLOWED=NO`). 3uTools couldn't parse the Mach-O to inject its own signature.
+
+**Fix (commit d1fff49)**: Added `codesign --force --deep -s -` (ad-hoc signature) step in CI right before IPA packaging. This gives the binary a standard `_CodeSignature/CodeResources` structure that 3uTools can replace with the user's Apple ID certificate.
+
+**Build #29971515965**: SUCCESS in 31s. Executable 700,688 bytes (681KB + ad-hoc signature blob). IPA 437 KB with proper `_CodeSignature/CodeResources`.
+
+**Fresh IPA on desktop**: `C:\Users\Hoshang\Desktop\AARCClockIn-signed.ipa`
+
+**Next step for user**: Use this ad-hoc signed IPA with 3uTools to sign with your Apple ID. If error 45 persists, try [Sideloadly](https://sideloadly.io) as an alternative.

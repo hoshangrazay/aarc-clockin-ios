@@ -189,6 +189,7 @@ final class ClockViewModel: ObservableObject {
                     location.startTracking()
                     startTimers()
                     state.locationStatus = .inside(distanceMeters: check.distance ?? 0)
+                    sendTrackingNotification()
                 } else {
                     state.lastError = resp.msg ?? "Clock in failed"
                 }
@@ -213,6 +214,16 @@ final class ClockViewModel: ObservableObject {
         } catch {
             state.lastError = "Notification permission denied: \(error.localizedDescription)"
         }
+    }
+
+    private func sendTrackingNotification() {
+        let center = UNUserNotificationCenter.current()
+        let content = UNMutableNotificationContent()
+        content.title = "AARC Clock in — Tracking Active"
+        content.body = "Location tracking is running. Do NOT swipe this app closed or tracking will stop."
+        content.sound = .default
+        let req = UNNotificationRequest(identifier: "tracking-warning", content: content, trigger: nil)
+        center.add(req)
     }
 
     private func observeLocation() {

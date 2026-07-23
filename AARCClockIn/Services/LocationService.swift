@@ -80,10 +80,13 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
     }
 
     func startTracking() {
-        if manager.authorizationStatus == .authorizedWhenInUse {
+        let status = manager.authorizationStatus
+        if status == .authorizedWhenInUse {
             manager.requestAlwaysAuthorization()
         }
-        manager.allowsBackgroundLocationUpdates = (manager.authorizationStatus == .authorizedAlways)
+        if status == .authorizedAlways {
+            manager.allowsBackgroundLocationUpdates = true
+        }
         manager.startUpdatingLocation()
     }
 
@@ -128,7 +131,10 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         authorizationStatus = manager.authorizationStatus
-        if authorizationStatus == .denied || authorizationStatus == .restricted {
+        if authorizationStatus == .authorizedAlways {
+            manager.allowsBackgroundLocationUpdates = true
+            manager.startUpdatingLocation()
+        } else if authorizationStatus == .denied || authorizationStatus == .restricted {
             status = .denied
         } else if authorizationStatus == .notDetermined {
             status = .unknown
