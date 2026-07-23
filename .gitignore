@@ -1,0 +1,23 @@
+# Xcode
+build/
+DerivedData/
+*.xcodeproj
+*.xcworkspace
+xcuserdata/
+*.xcuserstate
+*.swp
+~*.lock
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# SPM
+.build/
+Package.resolved
+
+# macOS
+.DS_Store
+
+# Local
+*.xcscmblueprint
