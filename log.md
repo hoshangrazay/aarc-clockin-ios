@@ -108,4 +108,18 @@ AARCClockInApp (@main) -> RootView -> LoginScreen | ClockScreen
 
 **Fresh IPA on desktop**: `C:\Users\Hoshang\Desktop\AARCClockIn-signed.ipa`
 
-**Next step for user**: Use this ad-hoc signed IPA with 3uTools to sign with your Apple ID. If error 45 persists, try [Sideloadly](https://sideloadly.io) as an alternative.
+---
+
+### 2026-07-23 — iOS background tracking fix + server auto clock-out
+
+**iOS fix (commit 03939a2)**:
+- `LocationService.swift`: Fixed `startTracking()` — `allowsBackgroundLocationUpdates` now only set to `true` when `.authorizedAlways` is confirmed; delegate handler restarts tracking if user upgrades to Always later
+- Added tracking warning notification on clock-in: "Location tracking is running. Do NOT swipe this app closed or tracking will stop."
+
+**Build #29972127289**: SUCCESS in 1m18s. Fresh IPA at `C:\Users\Hoshang\Desktop\AARCClockIn-fixed.ipa`
+
+**Server auto clock-out (deployed live)**:
+- Added `lost_signal` to `nfc_clock_events.clock_out_method` enum
+- Created `/home2/ogudsytw/public_html/nfc_auto_clockout.php` — runs every 5 min via cron, checks for active events with no location update for 15+ minutes, auto-clocks them out with method `lost_signal`
+- Updated `nfc_clock.php` method labels and CSS for `lost_signal` display (purple badge)
+- Cron: `*/5 * * * * /usr/local/bin/php .../nfc_auto_clockout.php`

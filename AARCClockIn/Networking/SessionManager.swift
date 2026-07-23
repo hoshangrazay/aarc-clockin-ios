@@ -17,5 +17,11 @@ class SessionManager {
     func logout() {
         defaults.removeObject(forKey: "token")
         defaults.removeObject(forKey: "username")
+        let storage = HTTPCookieStorage.shared
+        if let cookies = storage.cookies {
+            for cookie in cookies {
+                storage.deleteCookie(cookie)
+            }
+        }
     }
 }
