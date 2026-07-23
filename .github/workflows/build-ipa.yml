@@ -2,10 +2,8 @@ name: Build unsigned IPA
 
 on:
   push:
-    branches: [main, master]
+    branches: [main]
   workflow_dispatch:
-  pull_request:
-    branches: [main, master]
 
 jobs:
   build:
@@ -14,18 +12,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install XcodeGen (frozen major)
+      - name: Install XcodeGen
         run: brew install xcodegen
 
       - name: Generate Xcode project
         run: xcodegen generate
 
-      - name: Resolve Xcode version
-        id: xcv
-        run: |
-          xcodebuild -version || true
-          ls -la /Applications | grep Xcode || true
-          echo "available=$(ls /Applications | grep -c Xcode)" >> "$GITHUB_OUTPUT"
+      - name: Show Xcode version
+        run: xcodebuild -version || true
 
       - name: Build (unsigned)
         run: |
@@ -41,23 +35,22 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             DEVELOPMENT_TEAM="" \
-            build \
-            | tee build.log
+            build 2>&1 | tee build.log
 
       - name: Verify app built
         run: |
-          find build/DerivedData -name "AARCClockIn.app" -type d -print
-          test -d build/DerivedData/Build/Products/Release-iphoneos/AARCClockIn.app || {
-            echo "::error::AARCClockIn.app not found - firstая build failed";
-            tail -n 80 build.log;
-            exit 1;
-          }
+          APP_PATH="build/DerivedData/Build/Products/Release-iphoneos/AARCClockIn.app"
+          if [ ! -d "$APP_PATH" ]; then
+            echo "::error::AARCClockIn.app not found - build failed"
+            tail -n 80 build.log
+            exit 1
+          fi
+          echo "Built app at: $APP_PATH"
 
       - name: Pack unsigned IPA
         run: |
           mkdir -p Payload
           cp -R build/DerivedData/Build/Products/Release-iphoneos/AARCClockIn.app Payload/
-          # same name as app folder, preserves CFBundleName visibility in 3uTools
           zip -qr9 AARCClockIn-unsigned.ipa Payload
           ls -lh AARCClockIn-unsigned.ipa
 
