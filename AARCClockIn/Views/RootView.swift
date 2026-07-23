@@ -36,6 +36,7 @@ struct RootView: View {
         } message: {
             Text(viewModel.state.lastError ?? "")
         }
+        .preferredColorScheme(.light)
     }
 
     private var errorBinding: Binding<Bool> {

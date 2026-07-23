@@ -1,47 +1,111 @@
 import Foundation
 
-struct StatusResponse: Codable {
-    let clockedIn: Bool
-    let duration: Int
-    let username: String?
-    let geofence: String?
+struct LastEvent: Codable {
+    let inTime: String?
+    let out: String?
+    let method: String?
 
     enum CodingKeys: String, CodingKey {
+        case inTime = "in"
+        case out
+        case method
+    }
+}
+
+struct StatusResponse: Codable {
+    let ok: Bool
+    let loggedIn: Bool?
+    let clockedIn: Bool?
+    let username: String?
+    let clockInTime: String?
+    let duration: String?
+    let geofenceRadius: Int?
+    let lastEvent: LastEvent?
+    let msg: String?
+
+    enum CodingKeys: String, CodingKey {
+        case ok
+        case loggedIn = "logged_in"
         case clockedIn = "clocked_in"
-        case duration
         case username
-        case geofence
+        case clockInTime = "clock_in_time"
+        case duration
+        case geofenceRadius = "geofence_radius"
+        case lastEvent = "last_event"
+        case msg
     }
 }
 
 struct LoginResponse: Codable {
-    let success: Bool
+    let ok: Bool
     let token: String?
     let username: String?
-    let error: String?
+    let role: String?
+    let msg: String?
 }
 
 struct ToggleResponse: Codable {
-    let success: Bool
-    let clockedIn: Bool
-    let duration: Int
-    let message: String?
+    let ok: Bool
+    let action: String?
+    let msg: String?
+    let time: String?
+    let eventId: Int?
+    let duration: String?
 
     enum CodingKeys: String, CodingKey {
-        case success
-        case clockedIn = "clocked_in"
+        case ok
+        case action
+        case msg
+        case time
+        case eventId = "event_id"
         case duration
-        case message
     }
 }
 
 struct LocationResponse: Codable {
-    let success: Bool
+    let ok: Bool
     let action: String?
+    let distance: Int?
+    let inside: Bool?
+    let msg: String?
+    let duration: String?
 }
 
 struct CheckLocationResponse: Codable {
-    let inside: Bool
-    let distance: Int
-    let message: String?
+    let ok: Bool
+    let inside: Bool?
+    let distance: Int?
+    let radius: Int?
+    let canClockIn: Bool?
+    let msg: String?
+
+    enum CodingKeys: String, CodingKey {
+        case ok
+        case inside
+        case distance
+        case radius
+        case canClockIn = "can_clock_in"
+        case msg
+    }
+}
+
+enum DurationParser {
+    static func toSeconds(_ formatted: String?) -> Int {
+        guard let s = formatted, !s.isEmpty else { return 0 }
+        let pattern = "([0-9]+)\\s*([hms])"
+        guard let regex = try? NSRegularExpression(pattern: pattern, caseInsensitive: true) else { return 0 }
+        let nsr = s as NSString
+        var total = 0
+        for match in regex.matches(in: s, range: NSRange(location: 0, length: nsr.length)) {
+            let n = Int(nsr.substring(with: match.range(at: 1))) ?? 0
+            let u = nsr.substring(with: match.range(at: 2)).lowercased()
+            switch u {
+            case "h": total += n * 3600
+            case "m": total += n * 60
+            case "s": total += n
+            default: break
+            }
+        }
+        return total
+    }
 }

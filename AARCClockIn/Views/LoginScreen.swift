@@ -36,10 +36,12 @@ struct LoginScreen: View {
                     .autocorrectionDisabled(true)
                     .textInputAutocapitalization(.never)
                     .submitLabel(.next)
+                    .foregroundColor(.primary)
+                    .accentColor(Color(red: 0.2, green: 0.4, blue: 0.6))
                     .onSubmit { focusedField = .password }
                     .padding(.horizontal, 18)
                     .padding(.vertical, 14)
-                    .background(Color.white)
+                    .background(Color(.systemBackground))
                     .cornerRadius(12)
                     .shadow(color: .black.opacity(0.05), radius: 4, y: 2)
 
@@ -47,13 +49,15 @@ struct LoginScreen: View {
                     .focused($focusedField, equals: .password)
                     .textContentType(.password)
                     .submitLabel(.go)
+                    .foregroundColor(.primary)
+                    .accentColor(Color(red: 0.2, green: 0.4, blue: 0.6))
                     .onSubmit {
                         focusedField = nil
                         Task { await viewModel.login() }
                     }
                     .padding(.horizontal, 18)
                     .padding(.vertical, 14)
-                    .background(Color.white)
+                    .background(Color(.systemBackground))
                     .cornerRadius(12)
                     .shadow(color: .black.opacity(0.05), radius: 4, y: 2)
             }

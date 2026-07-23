@@ -97,10 +97,22 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
     }
 
     func updateStatusFromCheckLocation(_ response: CheckLocationResponse) {
-        if response.inside {
-            status = .inside(distanceMeters: response.distance)
+        let d = response.distance ?? 0
+        if response.canClockIn == true {
+            status = .inside(distanceMeters: d)
+        } else if response.inside == true {
+            status = .inside(distanceMeters: d)
         } else {
-            status = .outside(distanceMeters: response.distance)
+            status = .outside(distanceMeters: d)
+        }
+    }
+
+    func applyLocationResponse(_ response: LocationResponse) {
+        let d = response.distance ?? 0
+        if let inside = response.inside {
+            status = inside ? .inside(distanceMeters: d) : .outside(distanceMeters: d)
+        } else if response.distance != nil {
+            status = (d <= 250) ? .inside(distanceMeters: d) : .outside(distanceMeters: d)
         }
     }
 

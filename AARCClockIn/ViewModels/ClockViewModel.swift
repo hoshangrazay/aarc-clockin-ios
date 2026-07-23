@@ -17,10 +17,10 @@ final class ClockViewModel: ObservableObject {
         var durationSeconds: Int = 0
         var locationStatus: LocationStatus = .unknown
         var isSubmitting: Bool = false
-        var geofenceName: String = ""
+        var geofenceRadius: Int = 250
         var lastError: String? = nil
-        var lastErrorTimestamp: Date? = nil
         var clockInTime: Date? = nil
+        var geofenceName: String = ""
     }
 
     @Published var state = UIState()
@@ -61,14 +61,14 @@ final class ClockViewModel: ObservableObject {
 
         do {
             let resp = try await api.login(username: loginUsername, password: loginPassword)
-            if resp.success, let tok = resp.token {
+            if resp.ok, let tok = resp.token {
                 session.token = tok
                 session.username = resp.username ?? loginUsername
                 state.username = session.username ?? loginUsername
                 state.lastError = nil
                 await refreshStatus()
             } else {
-                loginError = resp.error ?? "Login failed"
+                loginError = resp.msg ?? "Login failed"
             }
         } catch {
             loginError = error.localizedDescription
@@ -94,19 +94,33 @@ final class ClockViewModel: ObservableObject {
         }
         do {
             let resp = try await api.status(token: token)
-            state.clockedIn = resp.clockedIn
-            state.durationSeconds = resp.duration
-            state.geofenceName = resp.geofence ?? ""
-            if resp.clockedIn {
-                state.clockInTime = Date().addingTimeInterval(TimeInterval(-resp.duration))
-                location.startTracking()
-                startTimers()
+            if resp.ok && resp.loggedIn == true {
+                session.username = resp.username ?? session.username
+                state.username = session.username ?? ""
+                state.clockedIn = resp.clockedIn ?? false
+                state.geofenceRadius = resp.geofenceRadius ?? 250
+                state.geofenceName = ""
+                state.lastError = nil
+                if state.clockedIn {
+                    state.durationSeconds = DurationParser.toSeconds(resp.duration)
+                    state.clockInTime = Date().addingTimeInterval(TimeInterval(-state.durationSeconds))
+                    location.startTracking()
+                    startTimers()
+                } else {
+                    state.durationSeconds = 0
+                    state.clockInTime = nil
+                    location.stopTracking()
+                    stopTimers()
+                }
+                state.screen = .clock
             } else {
-                state.clockInTime = nil
-                location.stopTracking()
+                session.logout()
+                state.screen = .login
+                loginError = resp.msg ?? "Session expired. Please log in again."
+                loginPassword = ""
                 stopTimers()
+                location.stopTracking()
             }
-            state.screen = .clock
         } catch {
             if let apiError = error as? ApiError, case .server(let code) = apiError, code == 401 {
                 logout()
@@ -129,14 +143,15 @@ final class ClockViewModel: ObservableObject {
         if state.clockedIn {
             do {
                 let resp = try await api.toggle(token: token, lat: nil, lng: nil)
-                if resp.success {
-                    state.clockedIn = resp.clockedIn
-                    state.durationSeconds = resp.duration
+                if resp.ok {
+                    state.clockedIn = false
+                    state.durationSeconds = 0
                     state.clockInTime = nil
+                    state.locationStatus = .unknown
                     stopTimers()
                     location.stopTracking()
                 } else {
-                    state.lastError = resp.message ?? "Clock out failed"
+                    state.lastError = resp.msg ?? "Clock out failed"
                 }
             } catch {
                 state.lastError = error.localizedDescription
@@ -157,27 +172,32 @@ final class ClockViewModel: ObservableObject {
 
                 let check = try await api.checkLocation(token: token, lat: lat, lng: lng)
                 location.updateStatusFromCheckLocation(check)
+                state.locationStatus = location.status
+                state.geofenceRadius = check.radius ?? state.geofenceRadius
 
-                guard check.inside else {
-                    state.lastError = "You must be at the charity to clock in (\(check.distance)m away)"
+                guard check.canClockIn == true else {
+                    let d = check.distance ?? 0
+                    let r = check.radius ?? state.geofenceRadius
+                    state.lastError = "You are \(d)m from the charity. Must be within \(r)m to clock in."
                     return
                 }
 
                 let resp = try await api.toggle(token: token, lat: lat, lng: lng)
-                if resp.success {
-                    state.clockedIn = resp.clockedIn
-                    state.durationSeconds = resp.duration
+                if resp.ok {
+                    state.clockedIn = true
+                    state.durationSeconds = 0
                     state.clockInTime = Date()
                     location.startTracking()
                     startTimers()
-                    state.locationStatus = .inside(distanceMeters: check.distance)
+                    state.locationStatus = .inside(distanceMeters: check.distance ?? 0)
                 } else {
-                    state.lastError = resp.message ?? "Clock in failed"
+                    state.lastError = resp.msg ?? "Clock in failed"
                 }
             } catch {
                 state.lastError = error.localizedDescription
                 if (error as? ApiError) != nil {
                     location.markUnavailable()
+                    state.locationStatus = .unavailable
                 }
             }
         }
@@ -190,8 +210,7 @@ final class ClockViewModel: ObservableObject {
     func requestNotificationPermission() async {
         let center = UNUserNotificationCenter.current()
         do {
-            let granted = try await center.requestAuthorization(options: [.alert, .sound])
-            _ = granted
+            _ = try await center.requestAuthorization(options: [.alert, .sound])
         } catch {
             state.lastError = "Notification permission denied: \(error.localizedDescription)"
         }
@@ -214,8 +233,10 @@ final class ClockViewModel: ObservableObject {
         Task {
             do {
                 let resp = try await api.sendLocation(token: token, lat: lat, lng: lng, accuracy: acc)
-                if let action = resp.action, action == "geofence_out" {
-                    self.handleForcedClockOut()
+                location.applyLocationResponse(resp)
+                state.locationStatus = location.status
+                if resp.action == "geofence_out" {
+                    self.handleForcedClockOut(msg: resp.msg)
                 }
             } catch {
                 print("Location upload failed: \(error)")
@@ -223,18 +244,20 @@ final class ClockViewModel: ObservableObject {
         }
     }
 
-    private func handleForcedClockOut() {
+    private func handleForcedClockOut(msg: String?) {
         state.clockedIn = false
         state.clockInTime = nil
+        state.durationSeconds = 0
         stopTimers()
         location.stopTracking()
+        state.locationStatus = .outside(distanceMeters: 0)
         let content = UNMutableNotificationContent()
         content.title = "AARC Clock in"
-        content.body = "You have been automatically clocked out (left the charity)."
+        content.body = msg ?? "You have been automatically clocked out (left the charity)."
         content.sound = .default
         let req = UNNotificationRequest(identifier: "geofence_out", content: content, trigger: nil)
         UNUserNotificationCenter.current().add(req)
-        state.lastError = "You left the charity area - automatically clocked out"
+        state.lastError = msg ?? "You left the charity area - automatically clocked out"
     }
 
     private func startTimers() {
@@ -289,6 +312,6 @@ extension ClockViewModel.UIState: Equatable {
         lhs.durationSeconds == rhs.durationSeconds &&
         lhs.locationStatus == rhs.locationStatus &&
         lhs.isSubmitting == rhs.isSubmitting &&
-        lhs.geofenceName == rhs.geofenceName
+        lhs.geofenceRadius == rhs.geofenceRadius
     }
 }
