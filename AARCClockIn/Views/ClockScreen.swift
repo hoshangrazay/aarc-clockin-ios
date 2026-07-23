@@ -3,6 +3,7 @@ import CoreLocation
 
 struct ClockScreen: View {
     @EnvironmentObject var viewModel: ClockViewModel
+    @State private var showHistory = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -51,18 +52,33 @@ struct ClockScreen: View {
                     }
                 }
 
-                Button(action: { viewModel.logout() }) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "rectangle.portrait.and.arrow.right")
-                        Text("Logout")
+                HStack(spacing: 24) {
+                    Button(action: { showHistory = true }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "clock.arrow.circlepath")
+                            Text("History")
+                        }
+                        .foregroundColor(Color(red: 0.18, green: 0.65, blue: 0.4))
+                        .font(.footnote)
                     }
-                    .foregroundColor(.secondary)
-                    .font(.footnote)
+
+                    Button(action: { viewModel.logout() }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "rectangle.portrait.and.arrow.right")
+                            Text("Logout")
+                        }
+                        .foregroundColor(.secondary)
+                        .font(.footnote)
+                    }
                 }
                 .padding(.bottom, 12)
             }
         }
         .padding(.top, 8)
+        .sheet(isPresented: $showHistory) {
+            HistoryView()
+                .environmentObject(viewModel)
+        }
     }
 
     private var topBar: some View {

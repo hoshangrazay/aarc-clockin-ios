@@ -1,5 +1,38 @@
 import Foundation
 
+struct HistoryDay: Codable, Identifiable {
+    var id: String { date + (clockIn ?? "") }
+    let date: String
+    let clockIn: String?
+    let clockOut: String?
+    let duration: String?
+    let method: String?
+
+    enum CodingKeys: String, CodingKey {
+        case date
+        case clockIn = "clock_in"
+        case clockOut = "clock_out"
+        case duration
+        case method
+    }
+}
+
+struct HistoryResponse: Codable {
+    let ok: Bool
+    let totalTime: String?
+    let totalDays: Int?
+    let history: [HistoryDay]?
+    let msg: String?
+
+    enum CodingKeys: String, CodingKey {
+        case ok
+        case totalTime = "total_time"
+        case totalDays = "total_days"
+        case history
+        case msg
+    }
+}
+
 struct LastEvent: Codable {
     let inTime: String?
     let out: String?

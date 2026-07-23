@@ -73,6 +73,11 @@ actor ClockApi {
         return try await performRequest(postRequest(url: url, body: body))
     }
 
+    func history(token: String) async throws -> HistoryResponse {
+        let url = makeURL("/api/clock/history", token: token)
+        return try await performRequest(URLRequest(url: url))
+    }
+
     func checkLocation(token: String, lat: Double, lng: Double) async throws -> CheckLocationResponse {
         let url = makeURL("/api/clock/check-location", token: token)
         let body = "lat=\(lat)&lng=\(lng)"
