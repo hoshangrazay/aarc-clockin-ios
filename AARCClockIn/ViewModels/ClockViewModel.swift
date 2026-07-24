@@ -102,8 +102,15 @@ final class ClockViewModel: ObservableObject {
                 state.geofenceName = ""
                 state.lastError = nil
                 if state.clockedIn {
-                    state.durationSeconds = DurationParser.toSeconds(resp.duration)
-                    state.clockInTime = Date().addingTimeInterval(TimeInterval(-state.durationSeconds))
+                    if let ts = resp.clockInTs {
+                        state.clockInTime = Date(timeIntervalSince1970: ts / 1000.0)
+                        if let start = state.clockInTime {
+                            state.durationSeconds = Int(Date().timeIntervalSince(start))
+                        }
+                    } else {
+                        state.durationSeconds = DurationParser.toSeconds(resp.duration)
+                        state.clockInTime = Date().addingTimeInterval(TimeInterval(-state.durationSeconds))
+                    }
                     location.startTracking()
                     startTimers()
                 } else {

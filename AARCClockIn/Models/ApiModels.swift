@@ -51,6 +51,7 @@ struct StatusResponse: Codable {
     let clockedIn: Bool?
     let username: String?
     let clockInTime: String?
+    let clockInTs: Double?
     let duration: String?
     let geofenceRadius: Int?
     let lastEvent: LastEvent?
@@ -62,6 +63,7 @@ struct StatusResponse: Codable {
         case clockedIn = "clocked_in"
         case username
         case clockInTime = "clock_in_time"
+        case clockInTs = "clock_in_ts"
         case duration
         case geofenceRadius = "geofence_radius"
         case lastEvent = "last_event"
